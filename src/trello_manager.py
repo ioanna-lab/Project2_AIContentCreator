@@ -11,9 +11,10 @@ Board: ACFT0520 - Project 2 - Ioanna
 URL: https://trello.com/b/kteKFdzb/treloforleadership
 
 Usage:
-    python trello_manager.py setup    # Full board setup
-    python trello_manager.py status   # Show current board status
-    python trello_manager.py move <card_name> <list_name>  # Move a card
+    python trello_manager.py setup                              # Full board setup
+    python trello_manager.py status                             # Show current board status
+    python trello_manager.py move "card name" "list name"       # Move a card
+    python trello_manager.py add "list name" "card name" "desc" # Add a new card
 """
 import os
 import sys
@@ -25,10 +26,10 @@ load_dotenv()
 logger = logging.getLogger("trello_manager")
 
 # ── Trello API config ─────────────────────────────────────────────────────────
-API_KEY   = os.getenv("TRELLO_API_KEY")
-TOKEN     = os.getenv("TRELLO_TOKEN")
-BOARD_ID  = "kteKFdzb"  # extracted from your board URL
-BASE_URL  = "https://api.trello.com/1"
+API_KEY  = os.getenv("TRELLO_API_KEY")
+TOKEN    = os.getenv("TRELLO_TOKEN")
+BOARD_ID = "kteKFdzb"
+BASE_URL = "https://api.trello.com/1"
 
 
 def _auth() -> dict:
@@ -92,9 +93,7 @@ def _put(endpoint: str, data: dict = {}) -> dict | None:
 # ── Board inspection ──────────────────────────────────────────────────────────
 
 def get_board_lists() -> dict[str, str]:
-    """
-    Return all lists on the board as {list_name: list_id}.
-    """
+    """Return all lists on the board as {list_name: list_id}."""
     lists = _get(f"boards/{BOARD_ID}/lists")
     if not lists:
         return {}
@@ -109,17 +108,14 @@ def get_list_cards(list_id: str) -> list[dict]:
 
 # ── Board setup ───────────────────────────────────────────────────────────────
 
-# Workflow columns in order — matches Kanban flow
 COLUMNS = [
     "Backlog",
     "This Week",
-    "In Progress  [WIP: 2]",   # WIP limit visible in the column name
+    "In Progress  [WIP: 2]",
     "Review",
     "Done",
 ]
 
-# All project cards organised by starting column
-# Format: (card_name, description)
 BACKLOG_CARDS = [
     (
         "[FR-001/002] Knowledge base markdown files",
@@ -241,7 +237,6 @@ BACKLOG_CARDS = [
     ),
 ]
 
-# Cards that start In Progress (already being worked on)
 IN_PROGRESS_CARDS = [
     (
         "Trello board setup and API integration",
@@ -254,7 +249,6 @@ IN_PROGRESS_CARDS = [
     ),
 ]
 
-# Cards that are already done
 DONE_CARDS = [
     (
         "PROJECT_REQUIREMENTS.md — initial version",
@@ -278,10 +272,10 @@ def create_list(name: str, pos: str = "bottom") -> str | None:
 def create_card(list_id: str, name: str, description: str = "") -> dict | None:
     """Create a card in a list and return the card dict."""
     result = _post("cards", {
-        "idList":  list_id,
-        "name":    name,
-        "desc":    description,
-        "pos":     "bottom",
+        "idList": list_id,
+        "name":   name,
+        "desc":   description,
+        "pos":    "bottom",
     })
     if result:
         logger.info("Created card: %s", name[:50])
@@ -309,17 +303,13 @@ def update_board_description() -> None:
 def setup_board() -> None:
     """
     Full board setup: create all lists and cards.
-
-    Safe to run multiple times — checks for existing lists first
-    to avoid creating duplicates.
+    Safe to run multiple times — checks for existing lists first.
     """
     print("\n🚀 Setting up ACFT0520 - Project 2 - Ioanna board...")
 
-    # ── Step 1: Check existing lists ─────────────────────────────────────────
     existing = get_board_lists()
     print(f"   Existing lists: {list(existing.keys())}")
 
-    # ── Step 2: Create missing columns ───────────────────────────────────────
     list_ids = {}
     for col in COLUMNS:
         if col in existing:
@@ -331,25 +321,21 @@ def setup_board() -> None:
                 list_ids[col] = new_id
                 print(f"   ✓ Created list: {col}")
 
-    # ── Step 3: Update board description ─────────────────────────────────────
     update_board_description()
     print("   ✓ Board description updated (WIP limit + Definition of Done)")
 
-    # ── Step 4: Create Backlog cards ──────────────────────────────────────────
     backlog_id = list_ids.get("Backlog")
     if backlog_id:
         print(f"\n   Creating {len(BACKLOG_CARDS)} Backlog cards...")
         for name, desc in BACKLOG_CARDS:
             create_card(backlog_id, name, desc)
 
-    # ── Step 5: Create In Progress cards ─────────────────────────────────────
     in_progress_id = list_ids.get("In Progress  [WIP: 2]")
     if in_progress_id:
         print(f"\n   Creating {len(IN_PROGRESS_CARDS)} In Progress cards...")
         for name, desc in IN_PROGRESS_CARDS:
             create_card(in_progress_id, name, desc)
 
-    # ── Step 6: Create Done cards ─────────────────────────────────────────────
     done_id = list_ids.get("Done")
     if done_id:
         print(f"\n   Creating {len(DONE_CARDS)} Done cards...")
@@ -391,7 +377,6 @@ def move_card(card_name_fragment: str, target_list_name: str) -> None:
         print(f"List '{target_list_name}' not found. Available: {list(lists.keys())}")
         return
 
-    # Search all lists for the card
     for list_name, list_id in lists.items():
         cards = get_list_cards(list_id)
         for card in cards:
@@ -402,6 +387,29 @@ def move_card(card_name_fragment: str, target_list_name: str) -> None:
                 return
 
     print(f"Card containing '{card_name_fragment}' not found.")
+
+
+def add_card(list_name: str, card_name: str, description: str = "") -> None:
+    """
+    Add a new card to any list by name.
+
+    Args:
+        list_name:   Exact name of the target list
+        card_name:   Name of the new card
+        description: Optional card description
+    """
+    lists = get_board_lists()
+    list_id = lists.get(list_name)
+
+    if not list_id:
+        print(f"List '{list_name}' not found.")
+        print(f"Available lists: {list(lists.keys())}")
+        return
+
+    result = create_card(list_id, card_name, description)
+    if result:
+        print(f"✓ Card created: {card_name}")
+        print(f"  URL: {result.get('shortUrl', '')}")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -428,8 +436,15 @@ if __name__ == "__main__":
     elif command == "move" and len(sys.argv) == 4:
         move_card(sys.argv[2], sys.argv[3])
 
+    elif command == "add" and len(sys.argv) >= 4:
+        list_name  = sys.argv[2]
+        card_name  = sys.argv[3]
+        card_desc  = sys.argv[4] if len(sys.argv) > 4 else ""
+        add_card(list_name, card_name, card_desc)
+
     else:
         print("Usage:")
-        print("  python trello_manager.py setup")
-        print("  python trello_manager.py status")
-        print('  python trello_manager.py move "card name" "list name"')
+        print("  python3 trello_manager.py setup")
+        print("  python3 trello_manager.py status")
+        print('  python3 trello_manager.py move "card name" "list name"')
+        print('  python3 trello_manager.py add "list name" "card name" "description"')

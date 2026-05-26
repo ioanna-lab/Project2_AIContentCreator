@@ -204,13 +204,7 @@ class ContentPipeline:
     def save_result(self, result: dict, filename: str = None) -> Path:
         """
         Save a generated result to a markdown file.
-
-        Args:
-            result:   Result dict from any generate_* method
-            filename: Optional custom filename (auto-generated if not provided)
-
-        Returns:
-            Path to the saved file
+        Also appends a cost entry to output/cost_log.md automatically.
         """
         if not filename:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -218,7 +212,7 @@ class ContentPipeline:
 
         output_path = OUTPUT_DIR / filename
 
-        # Write as markdown with metadata header
+        # Write content file as markdown with metadata header
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(f"# Generated Content: {result['content_type']}\n\n")
             f.write(f"**Generated:** {result['generated_at']}\n")
@@ -228,7 +222,40 @@ class ContentPipeline:
             f.write(result["content"])
 
         logger.info("Saved to: %s", output_path)
+
+        # Always append cost entry to cost_log.md
+        self._append_cost_log(result, output_path)
+
         return output_path
+
+
+    def _append_cost_log(self, result: dict, output_path: Path) -> None:
+        """
+        Append one line to output/cost_log.md after every generation.
+        Creates the file with a header if it doesn't exist yet.
+        """
+        cost_log_path = OUTPUT_DIR / "cost_log.md"
+        summary = self.llm.cost_tracker.summary()
+
+        # Write header if file is new
+        if not cost_log_path.exists():
+            with open(cost_log_path, "w", encoding="utf-8") as f:
+                f.write("# Cost Log\n\n")
+                f.write("| Timestamp | Content Type | Metadata | Tokens | Cost (USD) | Total Session |\n")
+                f.write("|-----------|-------------|----------|--------|------------|---------------|\n")
+
+        # Append one row per generation
+        with open(cost_log_path, "a", encoding="utf-8") as f:
+            f.write(
+                f"| {result['generated_at']} "
+                f"| {result['content_type']} "
+                f"| {json.dumps(result['metadata'])} "
+                f"| {summary['total_tokens']:,} "
+                f"| ${summary['average_cost']:.6f} "
+                f"| ${summary['total_cost']:.4f} |\n"
+            )
+
+        logger.debug("Cost log updated: %s", cost_log_path)
 
     def print_cost_summary(self):
         """Print cost summary for this pipeline session."""
