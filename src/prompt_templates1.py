@@ -139,116 +139,53 @@ Write the executive bio now:"""
     return system_prompt, user_prompt
 
 
-# ── Template 3: AI News Commentary ───────────────────────────────────────────
+# ── Template 3: AI News Commentary (Week 1 placeholder, full in Week 2) ───────
 
 def ai_commentary_template(
     context: str,
     news_item: str,
     source: str = "",
-    mode: str = "summary",
 ) -> tuple[str, str]:
     """
-    Generate commentary on an AI/tech news item in one of three modes.
+    Generate Ioanna's personal commentary on an AI/tech news item.
+
+    This is the template that makes the news commentary content unique:
+    the same news item filtered through Ioanna's specific experience and
+    frameworks produces a completely different output than generic AI summary.
 
     Args:
-        context:   Assembled knowledge base context (used only in "personal" mode)
-        news_item: Formatted news item(s). For "synthesis" mode, multiple items
-                   separated by "---" are passed as a single string.
+        context:   Assembled knowledge base context
+        news_item: The news headline, summary, or URL content to comment on
         source:    Optional source name (e.g. "Hacker News", "TechCrunch")
-        mode:      One of three modes:
-                   "summary"   — faithful story overview, no personal references forced
-                   "personal"  — overview + KB angle ONLY if there is a genuine connection
-                   "synthesis" — multi-story trend narrative (pass multiple items in news_item)
 
     Returns:
         Tuple of (system_prompt, user_prompt)
     """
     source_line = f"Source: {source}" if source else ""
+
     system_prompt = IOANNA_SYSTEM_PROMPT
 
-    if mode == "summary":
-        # Pure summary mode — faithful to the source, no personal KB anchoring.
-        # If multiple stories are passed, write a cohesive digest.
-        user_prompt = f"""Summarise the following news item(s) for a LinkedIn audience of engineering leaders.
-
-NEWS ITEM(S):
-{news_item}
-{source_line}
-
-RULES:
-- Start with what this story is actually about — the real subject, not a generic hook
-- Explain why it matters right now in the engineering / AI / tech industry
-- If multiple stories are provided, find the common thread and write a cohesive digest
-- Do NOT reference any personal background, companies, or named frameworks
-- Do NOT force connections that are not in the source material
-- Length: 150-200 words
-- Tone: informed industry observer — clear, specific, no hype
-- End with one sharp question for the audience that the story genuinely raises
-
-Write the summary now:"""
-
-    elif mode == "personal":
-        # Personal commentary — summary first, then KB perspective only if relevant.
-        # The key rule: if the connection is not genuine, skip it entirely.
-        user_prompt = f"""Using the knowledge base context below, write Ioanna Renta's commentary on the following news item.
+    user_prompt = f"""Using the knowledge base context below, write Ioanna Renta's commentary on the following news item for LinkedIn.
 
 NEWS ITEM:
 {news_item}
 {source_line}
 
-FOLLOW THIS STRUCTURE EXACTLY:
-
-1. OVERVIEW (2-3 sentences)
-   What is this story actually about? Be faithful to the source — no spin.
-
-2. INDUSTRY RELEVANCE (1-2 sentences)
-   Why does this matter right now for engineering leaders?
-
-3. PERSONAL ANGLE (2-3 sentences) — CONDITIONAL
-   Only include this section if there is a GENUINE, SPECIFIC connection to
-   Ioanna's experience. Ask yourself: is the link obvious and direct, or am I
-   stretching to find relevance?
-   — If QMI, sennder, Delivery Hero, HERE/AUDI are not actually relevant to
-     this specific story, OMIT this section entirely.
-   — A story about MIT lecture videos does NOT warrant a QMI reference.
-   — A story about AI governance at enterprise scale MAY warrant one.
-   — When in doubt, leave it out. A clean industry commentary is better than
-     a forced personal reference.
-
-4. POINT OF VIEW (1-2 sentences)
-   What should engineering leaders take away or watch for?
-
-STRICT RULES:
-- Total length: 180-220 words
+COMMENTARY RULES:
+- Start by connecting this news to something specific in Ioanna's experience or background
+- Provide a point of view that only someone with her background could give
+- Reference at least one of her frameworks, case studies, or real experiences
+- Challenge or add nuance to the obvious interpretation of the news
+- Length: 150-200 words
 - Tone: informed practitioner, not tech journalist
-- Do NOT fabricate relevance to the KB
-- If no genuine personal connection exists, sections 1+2+4 are sufficient
+- Do NOT just summarise the news — readers can read the original. Add a unique perspective.
 
-KNOWLEDGE BASE CONTEXT (reference only if genuinely relevant):
+UNIQUENESS TEST: Would this commentary make sense if written by someone without Ioanna's specific background? If yes, it is not unique enough. Ground it in her real experience.
+
+KNOWLEDGE BASE CONTEXT:
 {context}
 
 Write the commentary now:"""
-
-    else:
-        # Synthesis mode — multiple stories, find the cross-cutting trend.
-        # The stories are separated by "---" in news_item.
-        user_prompt = f"""You are synthesising multiple HackerNews stories into a single industry trend narrative for engineering leaders.
-
-STORIES:
-{news_item}
-
-SYNTHESIS RULES:
-- Read all stories and identify the 1-2 underlying themes connecting them
-- Write ONE cohesive narrative about what these stories together signal about
-  where the industry is heading — do NOT summarise each story separately
-- Be opinionated: what is the signal here that most people are not naming?
-- Do NOT reference any personal background, companies, or named frameworks
-- Open with the connecting thread, not with "Here are N stories..."
-- Length: 200-250 words
-- Tone: analyst / industry observer — specific, direct, no hedge words
-- End with one insight or prediction engineering leaders should act on
-
-Write the synthesis now:"""
 
     return system_prompt, user_prompt
 
@@ -294,91 +231,5 @@ KNOWLEDGE BASE CONTEXT:
 {context}
 
 Write the content now:"""
-
-    return system_prompt, user_prompt
-
-
-# ── Template 5: Web-grounded LinkedIn post ────────────────────────────────────
-
-def linkedin_industry_template(
-    kb_context: str,
-    web_context: str,
-    topic: str,
-    tone: str = "industry observation",
-) -> tuple[str, str]:
-    """
-    Generate a LinkedIn post grounded in live web research.
-
-    Used when tone is "industry observation" or "thought leadership".
-    Web context comes from WebResearcher — live articles and discussions.
-    KB context is used only for "thought leadership" (hybrid mode).
-
-    Args:
-        kb_context:  Knowledge base context (used for thought leadership only)
-        web_context: Formatted live web research results
-        topic:       The topic for the post
-        tone:        "industry observation" or "thought leadership"
-
-    Returns:
-        Tuple of (system_prompt, user_prompt)
-    """
-    system_prompt = IOANNA_SYSTEM_PROMPT
-
-    if tone == "industry observation":
-        # Pure industry mode — web sources only, no personal KB references
-        user_prompt = f"""Write a LinkedIn post for Ioanna Renta on the topic below.
-
-TOPIC: {topic}
-MODE: Industry Observation
-
-For this post, focus on what the INDUSTRY is currently saying and doing.
-Synthesise the perspectives from the live sources provided below.
-Add Ioanna's analytical lens — what is the gap nobody is talking about?
-What is the obvious interpretation that is wrong?
-
-DO NOT reference Ioanna's personal experience or career history in this post.
-The post should read as an informed industry observer, not a personal story.
-
-LINKEDIN FORMAT:
-- Start with a counterintuitive observation or surprising data point from the sources
-- 4-5 short paragraphs
-- End with a genuine question to the audience
-- 150-220 words
-- No hashtags or emojis
-
-LIVE INDUSTRY SOURCES:
-{web_context}
-
-Write the LinkedIn post now:"""
-
-    else:
-        # Thought leadership — hybrid of web sources + personal KB
-        user_prompt = f"""Write a LinkedIn post for Ioanna Renta on the topic below.
-
-TOPIC: {topic}
-MODE: Thought Leadership (industry context + personal experience)
-
-Step 1: Open with what the industry is currently saying (from the live sources below)
-Step 2: Pivot to Ioanna's personal experience — what did she see when she actually did this?
-Step 3: Identify the gap between industry theory and on-the-ground reality
-Step 4: Close with a clear point of view only Ioanna could give
-
-This is the most powerful format: "The industry says X. Here's what I saw when
-we actually did this at [company]."
-
-LINKEDIN FORMAT:
-- 4-6 short paragraphs
-- At least one specific number or named framework from Ioanna's background
-- End with a point of view, not a question
-- 180-250 words
-- No hashtags or emojis
-
-LIVE INDUSTRY SOURCES:
-{web_context}
-
-IOANNA'S KNOWLEDGE BASE (for personal anchoring):
-{kb_context}
-
-Write the LinkedIn post now:"""
 
     return system_prompt, user_prompt
