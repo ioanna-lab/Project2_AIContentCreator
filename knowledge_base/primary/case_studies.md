@@ -85,3 +85,10 @@
 | Customer retention | baseline | +60% | Delivery Hero (ML) |
 | Monolith migration | in progress | complete | sennder (6 months) |
 | Regrettable attrition | — | 0 | All organisations |
+
+
+---
+
+<!-- Added: 2026-05-29 16:53 | Category: Case Study | Source: KB Management tab -->
+
+When Product Management struggled to create prototypes because Engineering did not give them Priority, instead of just accepting the situation, Ioanna has introduced librechat as an OSS interface and formulated a small task force to find a way to create an easy way for PMs to query DBs and start with that. the team established MCP servers and agents fed with the figma files required to match the look and feel of the company and the first prototype was able to be achieved without engineering involvement within one week.
